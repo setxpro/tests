@@ -2,11 +2,12 @@
   "name": "ms-email",
   "version": "1.0.0",
   "description": "MS-EMAIL",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
     "start": "npm run build && node dist/app.js",
     "dev": "nodemon -r dotenv/config src/app.ts",
     "build": "rimraf ./dist && tsc",
+    "start:docker": "node app.js",
     "start:dev": "node dist/app.js",
     "test": "jest"
   },
