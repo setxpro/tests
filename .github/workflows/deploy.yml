@@ -1,0 +1,45 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - '**'
+
+jobs:
+  deploy-prod:
+    runs-on: bg-docker01
+    environment: production
+    if: ${{ (github.ref == 'refs/heads/master') || (github.ref == 'refs/heads/main') }}
+    env:
+        PORT: ${{ vars.PORT }}
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASS: ${{ secrets.SMTP_PASS }}
+    steps:
+      - name: Git checkout v3
+        uses: actions/checkout@v3
+
+      - name: Use node 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          architecture: 'x64'
+
+      - name: Debug deploy date TZ
+        run: echo "Running at! $(date +%Y%m%d-%H:%M:%S)"
+
+      - name: Renomear container atual para rollback
+        run: '[ -z "$(docker images -q ms-email:latest)" ] || docker tag ms-email:latest ms-email:bkp-$(date +%Y%m%d-%H%M%S)'
+
+      - name: Build da imagem
+        run: docker-compose build --no-cache --build-arg BUILD_DATE=$(date +%Y%m%d-%H%M%S) ms-email
+
+      - name: Start da aplicação
+        run: docker-compose up -d --force-recreate ms-email
+
+      - name: Mantém apenas as últimas 07 imagens de ms-email
+        run: if [ $(docker image ls --all -q ms-email | sed -n 7,1000p | wc -l ) -ge 1 ]; then docker rmi -f $(docker image ls --all -q ms-email | sed -n 7,1000p); fi
